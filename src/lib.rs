@@ -146,13 +146,11 @@ impl TipcConn {
         service_type: u32,
         service_instance: u32,
         node: u32,
-        scope: TipcScope,
     ) -> TipcResult<()> {
         let addr = tipc_addr {
             type_: service_type,
             instance: service_instance,
             node,
-            scope: scope as u32,
         };
         let r = unsafe { tipc_connect(self.socket, &addr) };
         if r < 0 {
@@ -180,7 +178,6 @@ impl TipcConn {
             type_: 0,
             instance: 0,
             node: 0,
-            scope: 0,
         };
         let socket = unsafe { tipc_accept(self.socket, &mut addr) };
         if socket < 0 {
@@ -228,13 +225,11 @@ impl TipcConn {
         data: &[u8],
         service_type: u32,
         service_instance: u32,
-        scope: TipcScope,
     ) -> TipcResult<i32> {
         let addr = tipc_addr {
             type_: service_type,
             instance: service_instance,
             node: 0,
-            scope: scope as u32,
         };
         let bytes_sent = self.send_to(data, &addr);
         if bytes_sent < 0 {
@@ -249,13 +244,11 @@ impl TipcConn {
         data: &[u8],
         socket_ref: u32,
         node_ref: u32,
-        scope: TipcScope,
     ) -> TipcResult<i32> {
         let addr = tipc_addr {
             type_: 0,
             instance: socket_ref,
             node: node_ref,
-            scope: scope as u32,
         };
 
         let bytes_sent = self.send_to(data, &addr);
@@ -275,14 +268,12 @@ impl TipcConn {
         service_type: u32,
         lower: u32,
         upper: u32,
-        scope: TipcScope,
     ) -> TipcResult<i32> {
         let node = if self.in_group { lower } else { upper };
         let addr = tipc_addr {
             type_: service_type,
             instance: lower,
             node,
-            scope: scope as u32,
         };
         let bytes_sent = unsafe {
             tipc_mcast(
@@ -300,12 +291,11 @@ impl TipcConn {
     }
 
     /// Join a group. If the group doesn't exist, it is automatically created.
-    pub fn join(&mut self, group_id: u32, member_id: u32, scope: TipcScope) -> TipcResult<()> {
+    pub fn join(&mut self, group_id: u32, member_id: u32) -> TipcResult<()> {
         let mut addr = tipc_addr {
             type_: group_id,
             instance: member_id,
             node: 0,
-            scope: scope as u32,
         };
 
         let r = unsafe { tipc_join(self.socket, &mut addr, true, false) };
@@ -336,9 +326,8 @@ impl TipcConn {
         service_type: u32,
         lower: u32,
         upper: u32,
-        scope: TipcScope,
     ) -> TipcResult<()> {
-        let r = unsafe { tipc_bind(self.socket, service_type, lower, upper, scope as u32) };
+        let r = unsafe { tipc_bind(self.socket, service_type, lower, upper, self.node_ref) };
         if r < 0 {
             return Err(TipcError::new("Error binding to socket address"));
         }
@@ -399,13 +388,11 @@ impl TipcConn {
             type_: 0,
             instance: 0,
             node: 0,
-            scope: 0,
         };
         let mut member_addr = tipc_addr {
             type_: 0,
             instance: 0,
             node: 0,
-            scope: 0,
         };
         let mut err = 0;
 
@@ -457,7 +444,6 @@ fn socket_and_node_refs(socket: c_int) -> TipcResult<(u32, u32)> {
         type_: 0,
         instance: 0,
         node: 0,
-        scope: 0,
     };
     let r = unsafe { tipc_sockaddr(socket, &mut addr) };
     if r < 0 {
